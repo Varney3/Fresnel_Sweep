@@ -22,9 +22,9 @@ RADIUS_RANGE_MM = np.linspace(0.05, 1.0, 10)  # Defect radius: 0.05 mm to 1.0 mm
 OPACITY_RANGE = np.linspace(0, 1, 10)         # Defect opacity: 0% to 100% in 10 steps
 
 WAVELENGTH_NM = 1000.0                      # Wavelength: 1000 nm
-PROPAGATION_DISTANCE_MM = 100.0              # Propagation distance: 100 mm
+PROPAGATION_DISTANCE_MM = 0.0             # Propagation distance: 100 mm
 
-SPATIAL_FILTER_CUTOFF_FREQ_MM = 2.0          # Spatial filter cutoff frequency: 2.0 mm⁻¹
+SPATIAL_FILTER_CUTOFF_FREQ_MM = 1.0          # Spatial filter cutoff frequency: mm⁻¹
 
 # Derived Parameters
 PIXEL_SIZE_MM = 1 / PIXELS_PER_MM           # Pixel size in mm
