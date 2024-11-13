@@ -22,36 +22,36 @@ from scipy.interpolate import griddata  # Add this import at the top with other 
 
 # Input Parameters (Human-Readable Units)
 CANVAS_SIZE_MM = 10.0                     # Simulation field size: 10 mm x 10 mm
-PIXELS_PER_MM = 30.76                       # Resolution: 100 pixels per millimeter
+PIXELS_PER_MM = 18.5                     # Resolution: 100 pixels per millimeter
 CANVAS_SIZE_PIXELS = int(CANVAS_SIZE_MM * PIXELS_PER_MM)  # Canvas resolution: 1000 x 1000 pixels
 
-RADIUS_RANGE_MM = np.linspace(0.0, 1, 20)  # Defect radius: 0.05 mm to 1.0 mm in 10 steps
-OPACITY_RANGE = np.linspace(0.0, 1, 20)         # Defect opacity: 0% to 100% in 10 steps
+DIAMETER_RANGE_MM = np.linspace(1, 3, 40)  # Defect diameter: 0.0 mm to 2.0 mm in 20 steps
+OPACITY_RANGE = np.linspace(0.0, 1, 40)      # Defect opacity: 0% to 100% in 20 steps
 
 # Golden Reference Parameters
-GOLDEN_RADIUS_MM = 0.48                     # Example radius for golden reference
-GOLDEN_OPACITY = 0.82                       # Example opacity for golden reference
+GOLDEN_DIAMETER_MM = 1.6                    # Example diameter for golden reference
+GOLDEN_OPACITY = 0.63                         # Example opacity for golden reference
 
-WAVELENGTH_NM = 1000.0                      # Wavelength: 1000 nm
-PROPAGATION_DISTANCE_MM = 0.0             # Propagation distance: 0 mm
+WAVELENGTH_NM = 1000.0                        # Wavelength: 1000 nm
+PROPAGATION_DISTANCE_MM = 0.0                 # Propagation distance: 0 mm
 
-SPATIAL_FILTER_CUTOFF_FREQ_MM = 1.4          # Spatial filter cutoff frequency: mm⁻¹
+SPATIAL_FILTER_CUTOFF_FREQ_MM = 2           # Spatial filter cutoff frequency: mm⁻¹
 
 # Similarity Threshold
-SIMILARITY_THRESHOLD = 0.975                # Similarity threshold (e.g., 0.97 for 97%)
+SIMILARITY_THRESHOLD = 0.975 #0.975          # Similarity threshold (e.g., 0.97 for 97%)
 
 # Compare to Golden Image Flag
-COMPARE_TO_GOLDEN = True                     # Flag to compare to golden image or just output all images
+COMPARE_TO_GOLDEN = True                      # Flag to compare to golden image or just output all images
 
 # Derived Parameters
-PIXEL_SIZE_MM = 1 / PIXELS_PER_MM           # Pixel size in mm
-PIXEL_SIZE_M = PIXEL_SIZE_MM * 1e-3         # Pixel size in meters
-CANVAS_SIZE_M = CANVAS_SIZE_MM * 1e-3       # Canvas size in meters
-WAVELENGTH_M = WAVELENGTH_NM * 1e-9         # Wavelength in meters
+PIXEL_SIZE_MM = 1 / PIXELS_PER_MM             # Pixel size in mm
+PIXEL_SIZE_M = PIXEL_SIZE_MM * 1e-3           # Pixel size in meters
+CANVAS_SIZE_M = CANVAS_SIZE_MM * 1e-3         # Canvas size in meters
+WAVELENGTH_M = WAVELENGTH_NM * 1e-9           # Wavelength in meters
 PROPAGATION_DISTANCE_M = PROPAGATION_DISTANCE_MM * 1e-3  # Propagation distance in meters
 SPATIAL_FILTER_CUTOFF_FREQ_M = SPATIAL_FILTER_CUTOFF_FREQ_MM * 1e3  # Convert mm⁻¹ to m⁻¹
 
-RADIUS_RANGE_PIXELS = RADIUS_RANGE_MM / PIXEL_SIZE_MM    # Convert radii from mm to pixels
+DIAMETER_RANGE_PIXELS = DIAMETER_RANGE_MM / PIXEL_SIZE_MM  # Convert diameters from mm to pixels
 
 RESULTS_DIR = "results_simple"
 GOLDEN_FILENAME = "golden.tiff"
@@ -87,13 +87,13 @@ def create_initial_field(canvas_size_pixels, canvas_size_m):
 
     return initial_field
 
-def create_mask_with_defect(canvas_size_pixels, radius_m, opacity, pixel_size_m):
+def create_mask_with_defect(canvas_size_pixels, diameter_m, opacity, pixel_size_m):
     """
     Creates a circular mask with a transmissive region outside a circular defect.
 
     Parameters:
     - canvas_size_pixels (int): Size of the canvas in pixels (assumed square).
-    - radius_m (float): Radius of the circular defect in meters.
+    - diameter_m (float): Diameter of the circular defect in meters.
     - opacity (float): Opacity of the defect, scaling between 0 (transparent) and 1 (opaque).
     - pixel_size_m (float): Physical size of a pixel in meters.
 
@@ -106,6 +106,7 @@ def create_mask_with_defect(canvas_size_pixels, radius_m, opacity, pixel_size_m)
     r = np.sqrt(X**2 + Y**2)
 
     # Create the mask
+    radius_m = diameter_m / 2
     mask = np.ones((canvas_size_pixels, canvas_size_pixels), dtype=np.float32)
     mask[r <= radius_m] = 1 - opacity
 
@@ -218,14 +219,14 @@ def generate_golden_reference(output_folder):
     Parameters:
     - output_folder (str): Directory to save the golden image.
     """
-    # Convert radius from mm to meters
-    radius_m = GOLDEN_RADIUS_MM * 1e-3
+    # Convert diameter from mm to meters
+    diameter_m = GOLDEN_DIAMETER_MM * 1e-3
 
     # Step 1: Create initial field with erf roll-off
     initial_field = create_initial_field(CANVAS_SIZE_PIXELS, CANVAS_SIZE_M)
 
     # Step 2: Apply defect mask
-    mask = create_mask_with_defect(CANVAS_SIZE_PIXELS, radius_m, GOLDEN_OPACITY, PIXEL_SIZE_M)
+    mask = create_mask_with_defect(CANVAS_SIZE_PIXELS, diameter_m, GOLDEN_OPACITY, PIXEL_SIZE_M)
     field_with_defect = initial_field * mask
 
     # Step 3: Fresnel propagation
@@ -263,25 +264,25 @@ def load_golden_reference(filepath):
         golden_image = np.array(img).astype(np.float32)
     return golden_image
 
-def run_simulation(radius_mm, opacity):
+def run_simulation(diameter_mm, opacity):
     """
     Runs a single simulation and returns the intensity image.
 
     Parameters:
-    - radius_mm (float): Radius of the defect in millimeters.
+    - diameter_mm (float): Diameter of the defect in millimeters.
     - opacity (float): Opacity of the defect (0 to 1).
 
     Returns:
     - intensity (ndarray): 2D array of the intensity pattern.
     """
-    # Convert radius from mm to meters
-    radius_m = radius_mm * 1e-3
+    # Convert diameter from mm to meters
+    diameter_m = diameter_mm * 1e-3
 
     # Step 1: Create initial field with erf roll-off
     initial_field = create_initial_field(CANVAS_SIZE_PIXELS, CANVAS_SIZE_M)
 
     # Step 2: Apply defect mask
-    mask = create_mask_with_defect(CANVAS_SIZE_PIXELS, radius_m, opacity, PIXEL_SIZE_M)
+    mask = create_mask_with_defect(CANVAS_SIZE_PIXELS, diameter_m, opacity, PIXEL_SIZE_M)
     field_with_defect = initial_field * mask
 
     # Step 3: Fresnel propagation
@@ -309,16 +310,16 @@ def run_simulation_and_compare(params, golden_image, threshold, output_folder):
     and returns matching parameters if similarity meets the threshold.
 
     Parameters:
-    - params (tuple): (radius_mm, opacity)
+    - params (tuple): (diameter_mm, opacity)
     - golden_image (ndarray): 2D array of the golden image.
     - threshold (float): Similarity threshold (e.g., 0.9 for 90%).
     - output_folder (str): Directory to save matching images.
 
     Returns:
-    - result (dict): Dictionary with 'radius_mm', 'opacity', and 'similarity'.
+    - result (dict): Dictionary with 'diameter_mm', 'opacity', and 'similarity'.
     """
-    radius_mm, opacity = params
-    generated_intensity = run_simulation(radius_mm, opacity)
+    diameter_mm, opacity = params
+    generated_intensity = run_simulation(diameter_mm, opacity)
 
     if COMPARE_TO_GOLDEN:
         # Compute cross-correlation similarity
@@ -326,13 +327,13 @@ def run_simulation_and_compare(params, golden_image, threshold, output_folder):
 
         # Save the matching image if similarity meets the threshold
         if similarity >= threshold:
-            filename = f"matched_radius_{radius_mm:.2f}mm_opacity_{int(opacity*100)}%.tiff"
+            filename = f"matched_diameter_{diameter_mm:.2f}mm_opacity_{int(opacity*100)}%.tiff"
             filepath = os.path.join(output_folder, filename)
             save_tiff(generated_intensity, filepath)
     else:
         similarity = None
 
-    return {'radius_mm': radius_mm, 'opacity': opacity, 'similarity': similarity}
+    return {'diameter_mm': diameter_mm, 'opacity': opacity, 'similarity': similarity}
 
 def plot_matching_parameters(csv_file, output_folder):
     """
@@ -349,16 +350,16 @@ def plot_matching_parameters(csv_file, output_folder):
     df = pd.read_csv(csv_file)
 
     # Create a grid for contour plot
-    radius_mm = df['radius_mm'].values
+    diameter_mm = df['diameter_mm'].values
     opacity = df['opacity'].values
     similarity = df['similarity'].values
 
     # Create grid data for contour plot
-    radius_grid, opacity_grid = np.meshgrid(np.unique(radius_mm), np.unique(opacity))
-    similarity_grid = np.zeros_like(radius_grid)
+    diameter_grid, opacity_grid = np.meshgrid(np.unique(diameter_mm), np.unique(opacity))
+    similarity_grid = np.zeros_like(diameter_grid)
 
-    for i, (r, o, s) in enumerate(zip(radius_mm, opacity, similarity)):
-        x_idx = np.where(np.unique(radius_mm) == r)[0][0]
+    for i, (d, o, s) in enumerate(zip(diameter_mm, opacity, similarity)):
+        x_idx = np.where(np.unique(diameter_mm) == d)[0][0]
         y_idx = np.where(np.unique(opacity) == o)[0][0]
         similarity_grid[y_idx, x_idx] = s
 
@@ -367,20 +368,20 @@ def plot_matching_parameters(csv_file, output_folder):
 
     plt.figure(figsize=(8, 6))
     contour_levels = np.arange(0, 1.01, 0.01)  # Contour levels at 1% increments
-    contour = plt.contourf(radius_grid, opacity_grid, similarity_grid, levels=contour_levels, cmap='viridis')
+    contour = plt.contourf(diameter_grid, opacity_grid, similarity_grid, levels=contour_levels, cmap='viridis')
     plt.colorbar(contour, label='Similarity (Cross-Correlation)')
     
     # Overlay red outline for contours above the similarity threshold
-    red_contour = plt.contour(radius_grid, opacity_grid, similarity_grid, levels=[SIMILARITY_THRESHOLD], colors='red', linewidths=2)
+    red_contour = plt.contour(diameter_grid, opacity_grid, similarity_grid, levels=[SIMILARITY_THRESHOLD], colors='red', linewidths=2)
 
     # Find the location of the highest similarity
     max_similarity_idx = np.unravel_index(np.argmax(similarity_grid, axis=None), similarity_grid.shape)
-    max_radius = radius_grid[max_similarity_idx]
+    max_diameter = diameter_grid[max_similarity_idx]
     max_opacity = opacity_grid[max_similarity_idx]
     max_similarity = similarity_grid[max_similarity_idx]
 
     # Add a red 'x' at the location of highest similarity
-    plt.plot(max_radius, max_opacity, 'rx', markersize=10, label=f'Highest Similarity: {max_similarity:.2f}\n(Diameter: {max_radius:.2f} mm, Opacity: {max_opacity:.2f})')
+    plt.plot(max_diameter, max_opacity, 'rx', markersize=10, label=f'Highest Similarity: {max_similarity:.2f}\n(Diameter: {max_diameter:.2f} mm, Opacity: {max_opacity:.2f})')
 
     # Add legend for the red contour and red 'x'
     red_patch = plt.Line2D([0], [0], color='red', lw=2, label=f'Similarity Threshold: {SIMILARITY_THRESHOLD}')
@@ -392,7 +393,7 @@ def plot_matching_parameters(csv_file, output_folder):
     plt.grid(True)
     
     # Set plot limits to match sweep parameters
-    plt.xlim(RADIUS_RANGE_MM[0], RADIUS_RANGE_MM[-1])
+    plt.xlim(DIAMETER_RANGE_MM[0], DIAMETER_RANGE_MM[-1])
     plt.ylim(OPACITY_RANGE[0], OPACITY_RANGE[-1])
     
     plot_path = os.path.join(output_folder, PLOT_FILENAME)
@@ -405,13 +406,13 @@ def process_simulation(params, golden_image, threshold, output_folder):
     and returns matching parameters if similarity meets the threshold.
 
     Parameters:
-    - params (tuple): (radius_mm, opacity)
+    - params (tuple): (diameter_mm, opacity)
     - golden_image (ndarray): 2D array of the golden image.
     - threshold (float): Similarity threshold (e.g., 0.9 for 90%).
     - output_folder (str): Directory to save matching images.
 
     Returns:
-    - match (dict or None): Dictionary with 'radius_mm' and 'opacity' if matched, else None.
+    - match (dict or None): Dictionary with 'diameter_mm' and 'opacity' if matched, else None.
     """
     return run_simulation_and_compare(params, golden_image, threshold, output_folder)
 
@@ -423,7 +424,7 @@ def main():
     # Create a single date-stamped subfolder for the simulation run
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     subfolder_name = (
-        f"{timestamp}_sweep_radius_{RADIUS_RANGE_MM[0]:.2f}-{RADIUS_RANGE_MM[-1]:.2f}mm_"
+        f"{timestamp}_sweep_diameter_{DIAMETER_RANGE_MM[0]:.2f}-{DIAMETER_RANGE_MM[-1]:.2f}mm_"
         f"opacity_{int(OPACITY_RANGE[0]*100)}-{int(OPACITY_RANGE[-1]*100)}%_"
         f"filter_{SPATIAL_FILTER_CUTOFF_FREQ_MM}mm^-1"
     )
@@ -441,14 +442,14 @@ def main():
     else:
         golden_image = None
 
-    # Step 3: Generate all combinations of radius and opacity
-    simulation_combinations = list(product(RADIUS_RANGE_MM, OPACITY_RANGE))
+    # Step 3: Generate all combinations of diameter and opacity
+    simulation_combinations = list(product(DIAMETER_RANGE_MM, OPACITY_RANGE))
     total_simulations = len(simulation_combinations)
 
     # Prepare CSV file for matching parameters
     csv_path = os.path.join(output_folder, MATCHING_CSV)
     with open(csv_path, 'w', newline='') as csvfile:
-        fieldnames = ['radius_mm', 'opacity', 'similarity']
+        fieldnames = ['diameter_mm', 'opacity', 'similarity']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
