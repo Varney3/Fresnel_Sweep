@@ -454,43 +454,45 @@ def main():
         format="%.3f"  # Display three decimals
     )
 
-    # Entry boxes for range and step size for opacity and diameter
-    diameter_range_min = st.sidebar.number_input(
-        'Diameter Range Min (mm)', 
-        value=0.0, 
-        step=0.001,  # Finer step size
-        format="%.3f"  # Display three decimals
-    )
-    diameter_range_max = st.sidebar.number_input(
-        'Diameter Range Max (mm)', 
-        value=5.0, 
-        step=0.001,  # Finer step size
-        format="%.3f"  # Display three decimals
-    )
-    diameter_step_size = st.sidebar.number_input(
-        'Diameter Step Size (mm)', 
-        value=0.1, 
-        step=0.001,  # Finer step size
-        format="%.3f"  # Display three decimals
-    )
-    opacity_range_min = st.sidebar.number_input(
-        'Opacity Range Min', 
-        value=0.0, 
-        step=0.001,  # Finer step size
-        format="%.3f"  # Display three decimals
-    )
-    opacity_range_max = st.sidebar.number_input(
-        'Opacity Range Max', 
-        value=1.0, 
-        step=0.001,  # Finer step size
-        format="%.3f"  # Display three decimals
-    )
-    opacity_step_size = st.sidebar.number_input(
-        'Opacity Step Size', 
-        value=0.1, 
-        step=0.001,  # Finer step size
-        format="%.3f"  # Display three decimals
-    )
+    # Collapsible section for Contour Parameters
+    with st.sidebar.expander("Contour Parameters"):
+        # Prefixed labels with "Contour"
+        diameter_range_min = st.number_input(
+            'Contour Diameter Range Min (mm)', 
+            value=0.0, 
+            step=0.001,  # Finer step size
+            format="%.3f"  # Display three decimals
+        )
+        diameter_range_max = st.number_input(
+            'Contour Diameter Range Max (mm)', 
+            value=5.0, 
+            step=0.001,  # Finer step size
+            format="%.3f"  # Display three decimals
+        )
+        diameter_step_size = st.number_input(
+            'Contour Diameter Step Size (mm)', 
+            value=0.1, 
+            step=0.001,  # Finer step size
+            format="%.3f"  # Display three decimals
+        )
+        opacity_range_min = st.number_input(
+            'Contour Opacity Range Min', 
+            value=0.0, 
+            step=0.001,  # Finer step size
+            format="%.3f"  # Display three decimals
+        )
+        opacity_range_max = st.number_input(
+            'Contour Opacity Range Max', 
+            value=1.0, 
+            step=0.001,  # Finer step size
+            format="%.3f"  # Display three decimals
+        )
+        opacity_step_size = st.number_input(
+            'Contour Opacity Step Size', 
+            value=0.1, 
+            step=0.001,  # Finer step size
+            format="%.3f"  # Display three decimals
+        )
 
     # Update ranges based on user input
     DIAMETER_RANGE_MM = np.arange(diameter_range_min, diameter_range_max + diameter_step_size, diameter_step_size)
