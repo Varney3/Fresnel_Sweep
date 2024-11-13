@@ -213,12 +213,12 @@ def compute_cross_correlation(image1, image2):
     max_correlation = np.max(correlation)
     return max_correlation
 
-def generate_golden_reference(output_folder):
+def generate_golden_reference():
     """
-    Generates and saves the golden reference image.
+    Generates the golden reference image and returns it.
 
-    Parameters:
-    - output_folder (str): Directory to save the golden image.
+    Returns:
+    - intensity (ndarray): 2D array of the golden intensity pattern.
     """
     # Convert diameter from mm to meters
     diameter_m = GOLDEN_DIAMETER_MM * 1e-3
@@ -247,9 +247,7 @@ def generate_golden_reference(output_folder):
     # Step 5: Compute intensity
     intensity = np.abs(filtered_field)**2
 
-    # Step 6: Save the golden intensity pattern as a TIFF image
-    golden_path = os.path.join(output_folder, GOLDEN_FILENAME)
-    save_tiff(intensity, golden_path)
+    return intensity  # Removed saving to file
 
 def load_golden_reference(filepath):
     """
@@ -336,19 +334,17 @@ def run_simulation_and_compare(params, golden_image, threshold, output_folder):
 
     return {'diameter_mm': diameter_mm, 'opacity': opacity, 'similarity': similarity}
 
-def plot_matching_parameters(csv_file, output_folder):
+def plot_matching_parameters(df, output_folder):
     """
     Plots a 2D contour plot of diameter vs. opacity with similarity as the z-axis and saves the plot as a JPEG.
     Overlays a red outline of the contour above the similarity threshold and adds a legend.
     Adds a red 'x' at the location of highest similarity.
 
     Parameters:
-    - csv_file (str): Path to the CSV file with matching parameters.
+    - df (DataFrame): DataFrame with matching parameters.
     - output_folder (str): Directory to save the plot.
     """
     import pandas as pd
-
-    df = pd.read_csv(csv_file)
 
     # Create a grid for contour plot
     diameter_mm = df['diameter_mm'].values
@@ -507,9 +503,8 @@ def main():
         GOLDEN_OPACITY = golden_opacity
         SIMILARITY_THRESHOLD = similarity_threshold
 
-        # Generate golden reference
-        generate_golden_reference(".")
-        golden_image = load_golden_reference(GOLDEN_FILENAME)
+        # Generate golden reference without saving to file
+        golden_image = generate_golden_reference()
 
         # Prepare simulation combinations
         simulation_combinations = list(product(DIAMETER_RANGE_MM, OPACITY_RANGE))
@@ -518,17 +513,17 @@ def main():
             result = run_simulation_and_compare(params, golden_image, SIMILARITY_THRESHOLD, ".")
             results.append(result)
 
-        # Save results to matching_parameters.csv
+        # Convert results to DataFrame without saving to CSV
         import pandas as pd
         df = pd.DataFrame(results)
-        df.to_csv(MATCHING_CSV, index=False)
 
-        # Generate contour plot after simulations
-        plot_matching_parameters(MATCHING_CSV, ".")
+        # Generate contour plot using the DataFrame directly
+        plot_matching_parameters(df, ".")
 
         # Display contour plot
-        contour_image = Image.open(PLOT_FILENAME)
-        st.image(contour_image, caption="Opacity vs. Diameter Contour Plot", use_column_width=True)
+        plot_path = os.path.join(".", PLOT_FILENAME)
+        contour_image = Image.open(plot_path)
+        st.image(contour_image, caption="Opacity vs. Diameter Contour Plot", use_container_width=True)
 
     else:
         st.write("Press 'Set Golden Defect' to update the simulation.")
