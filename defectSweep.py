@@ -25,12 +25,12 @@ CANVAS_SIZE_MM = 10.0                     # Simulation field size: 10 mm x 10 mm
 PIXELS_PER_MM = 18.5                     # Resolution: 100 pixels per millimeter
 CANVAS_SIZE_PIXELS = int(CANVAS_SIZE_MM * PIXELS_PER_MM)  # Canvas resolution: 1000 x 1000 pixels
 
-DIAMETER_RANGE_MM = np.linspace(1, 3, 40)  # Defect diameter: 0.0 mm to 2.0 mm in 20 steps
-OPACITY_RANGE = np.linspace(0.0, 1, 40)      # Defect opacity: 0% to 100% in 20 steps
+DIAMETER_RANGE_MM = np.linspace(0.0, 2, 40)  # Defect diameter: 0.0 mm to 2.0 mm in 20 steps
+OPACITY_RANGE = np.linspace(0.0, 1, 100)      # Defect opacity: 0% to 100% in 20 steps
 
 # Golden Reference Parameters
-GOLDEN_DIAMETER_MM = 1.6                    # Example diameter for golden reference
-GOLDEN_OPACITY = 0.63                         # Example opacity for golden reference
+GOLDEN_DIAMETER_MM = .88                    # Example diameter for golden reference
+GOLDEN_OPACITY = 0.68                         # Example opacity for golden reference
 
 WAVELENGTH_NM = 1000.0                        # Wavelength: 1000 nm
 PROPAGATION_DISTANCE_MM = 0.0                 # Propagation distance: 0 mm
@@ -38,7 +38,7 @@ PROPAGATION_DISTANCE_MM = 0.0                 # Propagation distance: 0 mm
 SPATIAL_FILTER_CUTOFF_FREQ_MM = 2           # Spatial filter cutoff frequency: mm⁻¹
 
 # Similarity Threshold
-SIMILARITY_THRESHOLD = 0.975 #0.975          # Similarity threshold (e.g., 0.97 for 97%)
+SIMILARITY_THRESHOLD = 0.995 #0.975          # Similarity threshold (e.g., 0.97 for 97%)
 
 # Compare to Golden Image Flag
 COMPARE_TO_GOLDEN = True                      # Flag to compare to golden image or just output all images
