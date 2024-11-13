@@ -25,12 +25,12 @@ CANVAS_SIZE_MM = 10.0                     # Simulation field size: 10 mm x 10 mm
 PIXELS_PER_MM = 30.76                       # Resolution: 100 pixels per millimeter
 CANVAS_SIZE_PIXELS = int(CANVAS_SIZE_MM * PIXELS_PER_MM)  # Canvas resolution: 1000 x 1000 pixels
 
-RADIUS_RANGE_MM = np.linspace(0.0, 1.0, 30)  # Defect radius: 0.05 mm to 1.0 mm in 10 steps
-OPACITY_RANGE = np.linspace(0, 1, 30)         # Defect opacity: 0% to 100% in 10 steps
+RADIUS_RANGE_MM = np.linspace(0.0, 1, 20)  # Defect radius: 0.05 mm to 1.0 mm in 10 steps
+OPACITY_RANGE = np.linspace(0.0, 1, 20)         # Defect opacity: 0% to 100% in 10 steps
 
 # Golden Reference Parameters
-GOLDEN_RADIUS_MM = 0.38                     # Example radius for golden reference
-GOLDEN_OPACITY = 1                       # Example opacity for golden reference
+GOLDEN_RADIUS_MM = 0.48                     # Example radius for golden reference
+GOLDEN_OPACITY = 0.82                       # Example opacity for golden reference
 
 WAVELENGTH_NM = 1000.0                      # Wavelength: 1000 nm
 PROPAGATION_DISTANCE_MM = 0.0             # Propagation distance: 0 mm
@@ -38,7 +38,7 @@ PROPAGATION_DISTANCE_MM = 0.0             # Propagation distance: 0 mm
 SPATIAL_FILTER_CUTOFF_FREQ_MM = 1.4          # Spatial filter cutoff frequency: mm⁻¹
 
 # Similarity Threshold
-SIMILARITY_THRESHOLD = 0.975                 # Similarity threshold (e.g., 0.97 for 97%)
+SIMILARITY_THRESHOLD = 0.975                # Similarity threshold (e.g., 0.97 for 97%)
 
 # Compare to Golden Image Flag
 COMPARE_TO_GOLDEN = True                     # Flag to compare to golden image or just output all images
@@ -338,6 +338,7 @@ def plot_matching_parameters(csv_file, output_folder):
     """
     Plots a 2D contour plot of diameter vs. opacity with similarity as the z-axis and saves the plot as a JPEG.
     Overlays a red outline of the contour above the similarity threshold and adds a legend.
+    Adds a red 'x' at the location of highest similarity.
 
     Parameters:
     - csv_file (str): Path to the CSV file with matching parameters.
@@ -372,9 +373,18 @@ def plot_matching_parameters(csv_file, output_folder):
     # Overlay red outline for contours above the similarity threshold
     red_contour = plt.contour(radius_grid, opacity_grid, similarity_grid, levels=[SIMILARITY_THRESHOLD], colors='red', linewidths=2)
 
-    # Add legend for the red contour
+    # Find the location of the highest similarity
+    max_similarity_idx = np.unravel_index(np.argmax(similarity_grid, axis=None), similarity_grid.shape)
+    max_radius = radius_grid[max_similarity_idx]
+    max_opacity = opacity_grid[max_similarity_idx]
+    max_similarity = similarity_grid[max_similarity_idx]
+
+    # Add a red 'x' at the location of highest similarity
+    plt.plot(max_radius, max_opacity, 'rx', markersize=10, label=f'Highest Similarity: {max_similarity:.2f}\n(Diameter: {max_radius:.2f} mm, Opacity: {max_opacity:.2f})')
+
+    # Add legend for the red contour and red 'x'
     red_patch = plt.Line2D([0], [0], color='red', lw=2, label=f'Similarity Threshold: {SIMILARITY_THRESHOLD}')
-    plt.legend(handles=[red_patch], loc='upper right')
+    plt.legend(handles=[red_patch, plt.Line2D([0], [0], color='red', marker='x', linestyle='None', markersize=10)], loc='lower right')
 
     plt.xlabel('Diameter (mm)')
     plt.ylabel('Opacity')
@@ -389,21 +399,20 @@ def plot_matching_parameters(csv_file, output_folder):
     plt.savefig(plot_path, format='jpeg')
     plt.close()
 
-def process_simulation(params, threshold, output_folder):
+def process_simulation(params, golden_image, threshold, output_folder):
     """
     Runs a simulation, compares the generated image with the golden reference,
     and returns matching parameters if similarity meets the threshold.
 
     Parameters:
     - params (tuple): (radius_mm, opacity)
+    - golden_image (ndarray): 2D array of the golden image.
     - threshold (float): Similarity threshold (e.g., 0.9 for 90%).
     - output_folder (str): Directory to save matching images.
 
     Returns:
     - match (dict or None): Dictionary with 'radius_mm' and 'opacity' if matched, else None.
     """
-    radius_mm, opacity = params
-    golden_image = load_golden_reference(os.path.join(output_folder, GOLDEN_FILENAME))
     return run_simulation_and_compare(params, golden_image, threshold, output_folder)
 
 def main():
@@ -450,6 +459,7 @@ def main():
                 executor.map(
                     process_simulation,
                     simulation_combinations,
+                    itertools.repeat(golden_image),
                     itertools.repeat(SIMILARITY_THRESHOLD),
                     itertools.repeat(output_folder)
                 ),
