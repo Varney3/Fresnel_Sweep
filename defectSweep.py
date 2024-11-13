@@ -15,6 +15,7 @@ import itertools  # Add this import at the top with other imports
 import matplotlib
 matplotlib.use('Agg')  # Use a non-interactive backend
 from scipy.interpolate import griddata  # Add this import at the top with other imports
+import streamlit as st
 
 # ============================
 # Configuration and Parameters
@@ -38,7 +39,7 @@ PROPAGATION_DISTANCE_MM = 0.0                 # Propagation distance: 0 mm
 SPATIAL_FILTER_CUTOFF_FREQ_MM = 2           # Spatial filter cutoff frequency: mm⁻¹
 
 # Similarity Threshold
-SIMILARITY_THRESHOLD = 0.995 #0.975          # Similarity threshold (e.g., 0.97 for 97%)
+SIMILARITY_THRESHOLD = 0.975  # Updated default similarity threshold
 
 # Compare to Golden Image Flag
 COMPARE_TO_GOLDEN = True                      # Flag to compare to golden image or just output all images
@@ -326,10 +327,10 @@ def run_simulation_and_compare(params, golden_image, threshold, output_folder):
         similarity = compute_cross_correlation(generated_intensity, golden_image)
 
         # Save the matching image if similarity meets the threshold
-        if similarity >= threshold:
-            filename = f"matched_diameter_{diameter_mm:.2f}mm_opacity_{int(opacity*100)}%.tiff"
-            filepath = os.path.join(output_folder, filename)
-            save_tiff(generated_intensity, filepath)
+        # if similarity >= threshold:
+        #     filename = f"matched_diameter_{diameter_mm:.2f}mm_opacity_{int(opacity*100)}%.tiff"
+        #     filepath = os.path.join(output_folder, filename)
+        #     save_tiff(generated_intensity, filepath)
     else:
         similarity = None
 
@@ -418,67 +419,115 @@ def process_simulation(params, golden_image, threshold, output_folder):
 
 def main():
     """
-    Main function to set up the simulation parameters, create output directory,
-    generate golden reference, run simulations, compare images, and save results.
+    Main function to set up the Streamlit app, handle user inputs,
+    generate simulation images, and display results.
     """
-    # Create a single date-stamped subfolder for the simulation run
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    subfolder_name = (
-        f"{timestamp}_sweep_diameter_{DIAMETER_RANGE_MM[0]:.2f}-{DIAMETER_RANGE_MM[-1]:.2f}mm_"
-        f"opacity_{int(OPACITY_RANGE[0]*100)}-{int(OPACITY_RANGE[-1]*100)}%_"
-        f"filter_{SPATIAL_FILTER_CUTOFF_FREQ_MM}mm^-1"
+    global GOLDEN_DIAMETER_MM, GOLDEN_OPACITY, SIMILARITY_THRESHOLD, DIAMETER_RANGE_MM, OPACITY_RANGE
+
+    st.title("Defect Simulation App")
+    st.write("Adjust the parameters to simulate defects and view the results.")
+
+    # Sidebar for controllers
+    st.sidebar.header("Simulation Parameters")
+
+    # Sliders for GOLDEN_DIAMETER_MM and GOLDEN_OPACITY
+    golden_diameter_mm = st.sidebar.slider(
+        'Defect Diameter (mm)',
+        min_value=0.0,
+        max_value=5.0,  # Increased max from 2.0 to 5.0 mm
+        value=GOLDEN_DIAMETER_MM,
+        step=0.1  # Set step size to 0.1
     )
-    output_folder = os.path.join(RESULTS_DIR, subfolder_name)
-    os.makedirs(output_folder, exist_ok=True)
+    golden_opacity = st.sidebar.slider(
+        'Defect Opacity',
+        min_value=0.0,
+        max_value=1.0,
+        value=GOLDEN_OPACITY,
+        step=0.1  # Set step size to 0.1
+    )
 
-    if COMPARE_TO_GOLDEN:
-        # Step 1: Generate Golden Reference
-        print("Generating golden reference image...")
-        generate_golden_reference(output_folder)
-        golden_path = os.path.join(output_folder, GOLDEN_FILENAME)
+    # Numeric input for SIMILARITY_THRESHOLD
+    similarity_threshold = st.sidebar.number_input(
+        'Similarity Threshold',
+        min_value=0.0,
+        max_value=1.0,
+        value=SIMILARITY_THRESHOLD,
+        step=0.001
+    )
 
-        # Step 2: Load Golden Reference
-        golden_image = load_golden_reference(golden_path)
+    # Entry boxes for range and step size for opacity and diameter
+    diameter_range_min = st.sidebar.number_input('Diameter Range Min (mm)', value=0.0, step=0.1)
+    diameter_range_max = st.sidebar.number_input('Diameter Range Max (mm)', value=5.0, step=0.1)  # Increased max to 5.0 mm
+    diameter_step_size = st.sidebar.number_input('Diameter Step Size (mm)', value=0.1, step=0.1)  # Set default to 0.1
+    opacity_range_min = st.sidebar.number_input('Opacity Range Min', value=0.0, step=0.1)  # Set step size to 0.1
+    opacity_range_max = st.sidebar.number_input('Opacity Range Max', value=1.0, step=0.1)  # Set step size to 0.1
+    opacity_step_size = st.sidebar.number_input('Opacity Step Size', value=0.1, step=0.1)  # Set default to 0.1
+
+    # Update ranges based on user input
+    DIAMETER_RANGE_MM = np.arange(diameter_range_min, diameter_range_max + diameter_step_size, diameter_step_size)
+    OPACITY_RANGE = np.arange(opacity_range_min, opacity_range_max + opacity_step_size, opacity_step_size)
+
+    # "Set Golden Defect" button
+    if st.sidebar.button('Set Golden Defect'):
+        # Update parameters
+        GOLDEN_DIAMETER_MM = golden_diameter_mm
+        GOLDEN_OPACITY = golden_opacity
+        SIMILARITY_THRESHOLD = similarity_threshold
+
+        # Generate golden reference
+        generate_golden_reference(".")
+        golden_image = load_golden_reference(GOLDEN_FILENAME)
+
+        # Prepare simulation combinations
+        simulation_combinations = list(product(DIAMETER_RANGE_MM, OPACITY_RANGE))
+        results = []
+        for params in simulation_combinations:
+            result = run_simulation_and_compare(params, golden_image, SIMILARITY_THRESHOLD, ".")
+            results.append(result)
+
+        # Generate contour plot after simulations
+        plot_matching_parameters(MATCHING_CSV, ".")
+
+        # Display contour plot
+        contour_image = Image.open(PLOT_FILENAME)
+        st.image(contour_image, caption="Opacity vs. Diameter Contour Plot", use_column_width=True)
+
     else:
-        golden_image = None
+        st.write("Press 'Set Golden Defect' to update the simulation.")
 
-    # Step 3: Generate all combinations of diameter and opacity
-    simulation_combinations = list(product(DIAMETER_RANGE_MM, OPACITY_RANGE))
-    total_simulations = len(simulation_combinations)
+    # Generate simulation image
+    intensity = run_simulation(golden_diameter_mm, golden_opacity)
+    fig_simulation, ax = plt.subplots(figsize=(2.45, 2.45))  # Further reduce size by ~30%
+    im = ax.imshow(intensity, cmap='gray', extent=[-CANVAS_SIZE_MM/2, CANVAS_SIZE_MM/2, -CANVAS_SIZE_MM/2, CANVAS_SIZE_MM/2])
+    plt.colorbar(im, ax=ax)
+    ax.set_title('Golden Defect', fontsize=10)  # Smaller title
+    ax.set_xlabel('X (mm)')
+    ax.set_ylabel('Y (mm)')
+    ax.set_xlim(-CANVAS_SIZE_MM/2, CANVAS_SIZE_MM/2)
+    ax.set_ylim(-CANVAS_SIZE_MM/2, CANVAS_SIZE_MM/2)
+    st.write("Golden Defect:")
+    st.pyplot(fig_simulation, use_container_width=True)
 
-    # Prepare CSV file for matching parameters
-    csv_path = os.path.join(output_folder, MATCHING_CSV)
-    with open(csv_path, 'w', newline='') as csvfile:
-        fieldnames = ['diameter_mm', 'opacity', 'similarity']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
+    # Add min and max position entry boxes before the cross-sectional plot
+    min_position_mm = st.number_input('Min Position (mm)', value=-1.0, step=0.1)
+    max_position_mm = st.number_input('Max Position (mm)', value=1.0, step=0.1)
 
-        # Step 4: Run simulations in parallel and compare
-        print("Running simulations and comparing to golden reference...")
-        with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
-            results = list(tqdm(
-                executor.map(
-                    process_simulation,
-                    simulation_combinations,
-                    itertools.repeat(golden_image),
-                    itertools.repeat(SIMILARITY_THRESHOLD),
-                    itertools.repeat(output_folder)
-                ),
-                total=total_simulations,
-                desc="Simulations",
-                unit="sim"
-            ))
-            # Write all results to CSV
-            for result in results:
-                writer.writerow(result)
-
-    if COMPARE_TO_GOLDEN:
-        # Step 5: Generate Opacity vs. Diameter Plot
-        print("Generating opacity vs. diameter plot...")
-        plot_matching_parameters(csv_path, output_folder)
-
-    print("Simulation and comparison completed.")
-    print(f"Results saved in folder: {output_folder}")
+    # Cross-sectional lineout
+    center_line = intensity[intensity.shape[0] // 2, :]
+    fig_lineout, ax_line = plt.subplots(figsize=(2.45, 1.0))  # Adjust aspect ratio
+    
+    # Calculate position in mm using user inputs
+    x_positions_mm = np.linspace(min_position_mm, max_position_mm, CANVAS_SIZE_PIXELS)  # Updated to use user inputs
+    ax_line.plot(x_positions_mm, center_line)
+    ax_line.set_ylim(0, 1.2)  # Fix y-axis between 0 and 1.2
+    ax_line.set_title('Cross-sectional Lineout', fontsize=10)  # Smaller title
+    ax_line.set_xlabel('Position (mm)')
+    ax_line.set_ylabel('Intensity')  # Corrected label
+    ax_line.set_xticks(np.arange(min_position_mm, max_position_mm + 0.5, 0.5))  # Tick every 0.5 mm
+    ax_line.set_yticks(np.arange(0, 1.2 + 0.2, 0.2))  # Tick every 0.2 units
+    ax_line.set_xlim(min_position_mm, max_position_mm)  # Set based on user input
+    st.write("Cross-sectional Lineout:")
+    st.pyplot(fig_lineout, use_container_width=True)
 
 if __name__ == "__main__":
     main()

@@ -3,3 +3,6 @@ numpy
 scipy
 Pillow
 tqdm
+matplotlib
+pandas
+streamlit
