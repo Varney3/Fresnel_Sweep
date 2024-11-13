@@ -413,12 +413,23 @@ def process_simulation(params, golden_image, threshold, output_folder):
     """
     return run_simulation_and_compare(params, golden_image, threshold, output_folder)
 
+def read_me():
+    with open("README.md", "r") as file:
+        readme_content = file.read()
+    st.sidebar.markdown("## Read Me")
+    with st.sidebar.expander("Open Read Me"):
+        st.markdown(readme_content)
+
 def main():
     """
     Main function to set up the Streamlit app, handle user inputs,
     generate simulation images, and display results.
     """
-    global GOLDEN_DIAMETER_MM, GOLDEN_OPACITY, SIMILARITY_THRESHOLD, DIAMETER_RANGE_MM, OPACITY_RANGE, CANVAS_SIZE_MM, PIXELS_PER_MM, WAVELENGTH_NM, PROPAGATION_DISTANCE_MM, SPATIAL_FILTER_CUTOFF_FREQ_MM
+    global GOLDEN_DIAMETER_MM, GOLDEN_OPACITY, SIMILARITY_THRESHOLD, DIAMETER_RANGE_MM, OPACITY_RANGE
+    global CANVAS_SIZE_MM, PIXELS_PER_MM, WAVELENGTH_NM, PROPAGATION_DISTANCE_MM, SPATIAL_FILTER_CUTOFF_FREQ_MM
+    # Add the derived parameters to the global declarations
+    global CANVAS_SIZE_PIXELS, PIXEL_SIZE_MM, PIXEL_SIZE_M, CANVAS_SIZE_M
+    global WAVELENGTH_M, PROPAGATION_DISTANCE_M, SPATIAL_FILTER_CUTOFF_FREQ_M, DIAMETER_RANGE_PIXELS
 
     st.title("Defect Simulation App")
     st.write("Adjust the parameters to simulate defects and view the results.")
@@ -645,6 +656,8 @@ def main():
     ax_line.set_xlim(min_position_mm, max_position_mm)  # Set based on user input
     st.write("Cross-sectional Lineout:")
     st.pyplot(fig_lineout, use_container_width=True)
+
+    read_me()
 
 if __name__ == "__main__":
     main()
