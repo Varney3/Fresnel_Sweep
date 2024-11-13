@@ -36,7 +36,7 @@ GOLDEN_OPACITY = 0.68                         # Example opacity for golden refer
 WAVELENGTH_NM = 1000.0                        # Wavelength: 1000 nm
 PROPAGATION_DISTANCE_MM = 0.0                 # Propagation distance: 0 mm
 
-SPATIAL_FILTER_CUTOFF_FREQ_MM = 2           # Spatial filter cutoff frequency: mm⁻¹
+SPATIAL_FILTER_CUTOFF_FREQ_MM = 2.0           # Spatial filter cutoff frequency: mm⁻¹
 
 # Similarity Threshold
 SIMILARITY_THRESHOLD = 0.975  # Updated default similarity threshold
@@ -418,7 +418,7 @@ def main():
     Main function to set up the Streamlit app, handle user inputs,
     generate simulation images, and display results.
     """
-    global GOLDEN_DIAMETER_MM, GOLDEN_OPACITY, SIMILARITY_THRESHOLD, DIAMETER_RANGE_MM, OPACITY_RANGE
+    global GOLDEN_DIAMETER_MM, GOLDEN_OPACITY, SIMILARITY_THRESHOLD, DIAMETER_RANGE_MM, OPACITY_RANGE, CANVAS_SIZE_MM, PIXELS_PER_MM, WAVELENGTH_NM, PROPAGATION_DISTANCE_MM, SPATIAL_FILTER_CUTOFF_FREQ_MM
 
     st.title("Defect Simulation App")
     st.write("Adjust the parameters to simulate defects and view the results.")
@@ -494,9 +494,70 @@ def main():
             format="%.3f"  # Display three decimals
         )
 
+    # Add new collapsible section
+    with st.sidebar.expander("Other Simulation Settings"):
+        st.write("Adjust additional simulation parameters:")
+        canvas_size_mm = st.number_input(
+            'Canvas Size (mm)',
+            min_value=1.0,
+            max_value=100.0,
+            value=CANVAS_SIZE_MM,
+            step=0.1,
+            help="Simulation field size in millimeters."
+        )
+        pixels_per_mm = st.number_input(
+            'Pixels per mm',
+            min_value=1.0,
+            max_value=100.0,
+            value=PIXELS_PER_MM,
+            step=0.1,
+            help="Resolution: pixels per millimeter."
+        )
+        wavelength_nm = st.number_input(
+            'Wavelength (nm)',
+            min_value=100.0,
+            max_value=2000.0,
+            value=WAVELENGTH_NM,
+            step=10.0,
+            help="Wavelength in nanometers."
+        )
+        propagation_distance_mm = st.number_input(
+            'Propagation Distance (mm)',
+            min_value=0.0,
+            max_value=100.0,
+            value=PROPAGATION_DISTANCE_MM,
+            step=0.1,
+            help="Propagation distance in millimeters."
+        )
+        spatial_filter_cutoff_freq_mm = st.number_input(
+            'Spatial Filter Cutoff Frequency (mm⁻¹)',
+            min_value=0.1,
+            max_value=100.0,
+            value=SPATIAL_FILTER_CUTOFF_FREQ_MM,
+            step=0.1,
+            help="Spatial filter cutoff frequency in cycles per millimeter."
+        )
+
     # Update ranges based on user input
     DIAMETER_RANGE_MM = np.arange(diameter_range_min, diameter_range_max + diameter_step_size, diameter_step_size)
     OPACITY_RANGE = np.arange(opacity_range_min, opacity_range_max + opacity_step_size, opacity_step_size)
+
+    # Use the user inputs to update the parameters
+    CANVAS_SIZE_MM = canvas_size_mm
+    PIXELS_PER_MM = pixels_per_mm
+    WAVELENGTH_NM = wavelength_nm
+    PROPAGATION_DISTANCE_MM = propagation_distance_mm
+    SPATIAL_FILTER_CUTOFF_FREQ_MM = spatial_filter_cutoff_freq_mm
+
+    CANVAS_SIZE_PIXELS = int(CANVAS_SIZE_MM * PIXELS_PER_MM)
+    PIXEL_SIZE_MM = 1 / PIXELS_PER_MM
+    PIXEL_SIZE_M = PIXEL_SIZE_MM * 1e-3
+    CANVAS_SIZE_M = CANVAS_SIZE_MM * 1e-3
+    WAVELENGTH_M = WAVELENGTH_NM * 1e-9
+    PROPAGATION_DISTANCE_M = PROPAGATION_DISTANCE_MM * 1e-3
+    SPATIAL_FILTER_CUTOFF_FREQ_M = SPATIAL_FILTER_CUTOFF_FREQ_MM * 1e3
+
+    DIAMETER_RANGE_PIXELS = DIAMETER_RANGE_MM / PIXEL_SIZE_MM
 
     # "Set Golden Defect" button
     if st.sidebar.button('Set Golden Defect'):
