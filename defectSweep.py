@@ -436,14 +436,16 @@ def main():
         min_value=0.0,
         max_value=5.0,  # Increased max from 2.0 to 5.0 mm
         value=GOLDEN_DIAMETER_MM,
-        step=0.1  # Set step size to 0.1
+        step=0.001,  # Finer step size
+        format="%.3f"  # Display three decimals
     )
     golden_opacity = st.sidebar.slider(
         'Defect Opacity',
         min_value=0.0,
         max_value=1.0,
         value=GOLDEN_OPACITY,
-        step=0.1  # Set step size to 0.1
+        step=0.001,  # Finer step size
+        format="%.3f"  # Display three decimals
     )
 
     # Numeric input for SIMILARITY_THRESHOLD
@@ -452,16 +454,47 @@ def main():
         min_value=0.0,
         max_value=1.0,
         value=SIMILARITY_THRESHOLD,
-        step=0.001
+        step=0.001,
+        format="%.3f"  # Display three decimals
     )
 
     # Entry boxes for range and step size for opacity and diameter
-    diameter_range_min = st.sidebar.number_input('Diameter Range Min (mm)', value=0.0, step=0.1)
-    diameter_range_max = st.sidebar.number_input('Diameter Range Max (mm)', value=5.0, step=0.1)  # Increased max to 5.0 mm
-    diameter_step_size = st.sidebar.number_input('Diameter Step Size (mm)', value=0.1, step=0.1)  # Set default to 0.1
-    opacity_range_min = st.sidebar.number_input('Opacity Range Min', value=0.0, step=0.1)  # Set step size to 0.1
-    opacity_range_max = st.sidebar.number_input('Opacity Range Max', value=1.0, step=0.1)  # Set step size to 0.1
-    opacity_step_size = st.sidebar.number_input('Opacity Step Size', value=0.1, step=0.1)  # Set default to 0.1
+    diameter_range_min = st.sidebar.number_input(
+        'Diameter Range Min (mm)', 
+        value=0.0, 
+        step=0.001,  # Finer step size
+        format="%.3f"  # Display three decimals
+    )
+    diameter_range_max = st.sidebar.number_input(
+        'Diameter Range Max (mm)', 
+        value=5.0, 
+        step=0.001,  # Finer step size
+        format="%.3f"  # Display three decimals
+    )
+    diameter_step_size = st.sidebar.number_input(
+        'Diameter Step Size (mm)', 
+        value=0.1, 
+        step=0.001,  # Finer step size
+        format="%.3f"  # Display three decimals
+    )
+    opacity_range_min = st.sidebar.number_input(
+        'Opacity Range Min', 
+        value=0.0, 
+        step=0.001,  # Finer step size
+        format="%.3f"  # Display three decimals
+    )
+    opacity_range_max = st.sidebar.number_input(
+        'Opacity Range Max', 
+        value=1.0, 
+        step=0.001,  # Finer step size
+        format="%.3f"  # Display three decimals
+    )
+    opacity_step_size = st.sidebar.number_input(
+        'Opacity Step Size', 
+        value=0.1, 
+        step=0.001,  # Finer step size
+        format="%.3f"  # Display three decimals
+    )
 
     # Update ranges based on user input
     DIAMETER_RANGE_MM = np.arange(diameter_range_min, diameter_range_max + diameter_step_size, diameter_step_size)
@@ -484,6 +517,11 @@ def main():
         for params in simulation_combinations:
             result = run_simulation_and_compare(params, golden_image, SIMILARITY_THRESHOLD, ".")
             results.append(result)
+
+        # Save results to matching_parameters.csv
+        import pandas as pd
+        df = pd.DataFrame(results)
+        df.to_csv(MATCHING_CSV, index=False)
 
         # Generate contour plot after simulations
         plot_matching_parameters(MATCHING_CSV, ".")
@@ -509,16 +547,37 @@ def main():
     st.pyplot(fig_simulation, use_container_width=True)
 
     # Add min and max position entry boxes before the cross-sectional plot
-    min_position_mm = st.number_input('Min Position (mm)', value=-1.0, step=0.1)
-    max_position_mm = st.number_input('Max Position (mm)', value=1.0, step=0.1)
+    min_position_mm = st.number_input(
+        'Min Position (mm)', 
+        value=-1.0, 
+        step=0.001,  # Finer step size
+        format="%.3f"  # Display three decimals
+    )
+    max_position_mm = st.number_input(
+        'Max Position (mm)', 
+        value=1.0, 
+        step=0.001,  # Finer step size
+        format="%.3f"  # Display three decimals
+    )
 
     # Cross-sectional lineout
     center_line = intensity[intensity.shape[0] // 2, :]
     fig_lineout, ax_line = plt.subplots(figsize=(2.45, 1.0))  # Adjust aspect ratio
     
-    # Calculate position in mm using user inputs
-    x_positions_mm = np.linspace(min_position_mm, max_position_mm, CANVAS_SIZE_PIXELS)  # Updated to use user inputs
-    ax_line.plot(x_positions_mm, center_line)
+    # Calculate start and end indices based on min and max positions
+    start_idx = max(int((min_position_mm + CANVAS_SIZE_MM / 2) * PIXELS_PER_MM), 0)
+    end_idx = min(int((max_position_mm + CANVAS_SIZE_MM / 2) * PIXELS_PER_MM), CANVAS_SIZE_PIXELS)
+    
+    # Slice the data for zooming
+    lineout_slice = center_line[start_idx:end_idx]
+    x_positions_mm = np.linspace(
+        min_position_mm, 
+        max_position_mm, 
+        end_idx - start_idx
+    )
+    
+    # Plot the sliced data
+    ax_line.plot(x_positions_mm, lineout_slice)
     ax_line.set_ylim(0, 1.2)  # Fix y-axis between 0 and 1.2
     ax_line.set_title('Cross-sectional Lineout', fontsize=10)  # Smaller title
     ax_line.set_xlabel('Position (mm)')
